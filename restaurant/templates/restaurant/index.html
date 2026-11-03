@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant · Reservation System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    body { background: #f8f5f0; display: flex; justify-content: center; min-height: 100vh; padding: 1.5rem; }
+    .app-container { max-width: 1100px; width: 100%; background: #fff; border-radius: 2.5rem; box-shadow: 0 20px 35px -8px rgba(0,0,0,.15); padding: 2rem; border: 1px solid #f0e7dd; }
+    .api-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px dashed #e8ddd2; }
+    .api-header h1 { font-size: 1.7rem; font-weight: 700; color: #3b2b1f; display: flex; align-items: center; gap: .5rem; }
+    .api-header h1 span { background: #ff6b4a; color: #fff; font-size: .75rem; padding: .2rem .8rem; border-radius: 40px; font-weight: 500; }
+    .auth-badge { border-radius: 60px; padding: .4rem 1.2rem; font-size: .85rem; font-weight: 500; color: #3d3d3d; border: 1px solid #d9cfc4; background: #fcfaf7; }
+    .auth-badge.ok { color: #2a7a3e; border-color: #b7dfc4; background: #f0fbf3; }
+    .auth-badge.ok::before { content: "🔓 "; }
+    .auth-badge.no { color: #8a2f1c; border-color: #f5c1b4; background: #fff6f3; }
+    .auth-badge.no::before { content: "🔒 "; }
+
+    /* panels */
+    .panel { background: #fff8f0; border: 1px solid #ffd6b8; border-radius: 1.4rem; padding: 1rem 1.2rem; margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; }
+    .panel .label { font-weight: 600; color: #7a4a2a; font-size: .9rem; }
+
+    /* grid + cards */
+    .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem; margin-bottom: 1.6rem; }
+    @media (max-width: 700px) { .grid-2col { grid-template-columns: 1fr; } }
+    .card { background: #fefcf9; border-radius: 1.6rem; padding: 1.4rem; border: 1px solid #ede3d8; display: flex; flex-direction: column; }
+    .card.full-width { margin-bottom: 1.6rem; }
+    .card-header { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .card-header h2 { font-size: 1.1rem; font-weight: 600; color: #2f2219; }
+    .endpoint { margin-left: auto; font-size: .68rem; background: #e8ddd2; padding: .2rem .7rem; border-radius: 30px; font-family: monospace; color: #5e4a3a; font-weight: 500; }
+    .preview-box { background: #fff; border-radius: 1.2rem; padding: 1rem 1.2rem; border: 1px solid #eee7e1; margin-bottom: 1rem; font-size: .92rem; min-height: 90px; flex: 1; }
+    .dish-message { color: #8a6e5a; font-style: italic; font-size: .85rem; margin-bottom: .6rem; border-left: 3px solid #d9b9a4; padding-left: .8rem; }
+    .dish-data-row { display: flex; gap: .5rem 1rem; margin-top: .3rem; flex-wrap: wrap; }
+    .dish-label { font-weight: 600; color: #5b3e2b; min-width: 90px; font-size: .78rem; text-transform: uppercase; letter-spacing: .02em; }
+    .dish-value { color: #262626; font-weight: 500; }
+    .row-item { display: flex; justify-content: space-between; padding: .55rem 0; border-bottom: 1px solid #f0e7df; font-size: .9rem; }
+    .row-item:last-child { border-bottom: none; }
+    .pill-list { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .pill { background: #f4ede7; padding: .35rem 1rem; border-radius: 30px; font-size: .82rem; font-weight: 500; color: #4a3427; border: 1px solid #e0d2c4; }
+
+    /* buttons */
+    .btn-row { display: flex; flex-wrap: wrap; gap: .6rem; }
+    .btn { background: #fff; border: 1px solid #d9cfc4; padding: .55rem 1.1rem; border-radius: 60px; font-weight: 500; font-size: .85rem; color: #3d2b1c; cursor: pointer; transition: .15s; }
+    .btn:hover { background: #f2ebe4; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: #3b2b1f; color: #fff; border-color: #3b2b1f; }
+    .btn-primary:hover { background: #2a1e15; }
+    .btn-accent { background: #ff6b4a; border-color: #ff6b4a; color: #fff; }
+    .btn-accent:hover { background: #e55a3a; }
+    .btn-danger { background: #fff1ed; border-color: #f5c1b4; color: #a5341c; }
+    .btn-danger:hover { background: #ffe2da; }
+    .btn-sm { padding: .35rem .9rem; font-size: .78rem; }
+
+    /* inputs */
+    .input-field, select, input { border: 1px solid #dbcec2; border-radius: 60px; padding: .6rem 1.1rem; font-size: .88rem; background: #fff; outline: none; transition: .15s; }
+    .input-field:focus, select:focus, input:focus { border-color: #ff6b4a; box-shadow: 0 0 0 3px rgba(255,107,74,.15); }
+
+    /* inline forms */
+    .inline-form { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; }
+    .inline-form .input-field { flex: 1 1 160px; }
+
+    /* reservations */
+    .reservation-form { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px dashed #e8ddd2; }
+    .reservation-form select, .reservation-form input { flex: 0 1 auto; }
+    .res-list { display: flex; flex-direction: column; gap: .8rem; }
+    .res-item { background: #fff; border: 1px solid #eee7e1; border-radius: 1.2rem; padding: .9rem 1.1rem; display: flex; flex-direction: column; gap: .5rem; }
+    .res-item-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: .5rem; }
+    .res-title { font-weight: 600; color: #2f2219; font-size: .95rem; }
+    .res-meta { color: #6b5545; font-size: .82rem; display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .2rem; }
+    .res-badge { font-size: .72rem; font-weight: 700; padding: .2rem .8rem; border-radius: 30px; text-transform: uppercase; letter-spacing: .04em; }
+    .status-pending   { background: #fff4d6; color: #8a6c1b; }
+    .status-confirmed { background: #d8f4e1; color: #1f6b38; }
+    .status-completed { background: #e0e8f5; color: #2f4d8f; }
+    .status-cancelled { background: #ffe2da; color: #8a2f1c; }
+    .res-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .4rem; }
+
+    /* toast */
+    .toast { font-size: .82rem; background: #e9e0d7; border-radius: 40px; padding: .4rem 1rem; color: #3c2b1d; display: none; margin-top: .7rem; border: 1px solid #d6c7b9; }
+    .toast.show { display: inline-block; }
+    .toast.err { background: #ffe2da; border-color: #f5c1b4; color: #8a2f1c; }
+
+    .endpoint-url { font-size: .7rem; color: #7a6a5c; margin-top: .7rem; }
+    .endpoint-url .method { background: #e4d9ce; border-radius: 20px; padding: .15rem .6rem; font-weight: 600; color: #3a2c21; margin-right: .3rem; }
+    .empty-note { color: #8a6e5a; font-style: italic; padding: .5rem; font-size: .88rem; }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <div class="api-header">
+      <h1>🍽️ Restaurant · Reservation System <span>LIVE</span></h1>
+      <div id="authBadge" class="auth-badge no">not authenticated</div>
+    </div>
+
+    <!-- Login -->
+    <div class="panel">
+      <span class="label">🔑 Login:</span>
+      <input id="loginUsername" placeholder="username" value="chef" style="max-width:160px;">
+      <input id="loginPassword" type="password" placeholder="password" value="secret123" style="max-width:160px;">
+      <button class="btn btn-primary" id="loginBtn">Sign in</button>
+      <button class="btn" id="logoutBtn">Sign out</button>
+    </div>
+
+    <!-- Register -->
+    <div class="panel">
+      <span class="label">📝 Register:</span>
+      <input id="regUsername" placeholder="new username" value="new_chef" style="max-width:160px;">
+      <input id="regPassword" type="password" placeholder="password (min 8)" value="secret123" style="max-width:180px;">
+      <button class="btn btn-accent" id="registerBtn">Create account</button>
+      <span class="toast" id="registerMsg"></span>
+    </div>
+
+    <!-- Dishes -->
+    <div class="grid-2col">
+      <div class="card">
+        <div class="card-header">
+          <h2>📋 All Dishes</h2>
+          <span class="endpoint">GET /api/dishes/</span>
+        </div>
+        <div class="preview-box"><div id="dishesList" class="empty-note">Not loaded</div></div>
+        <div class="btn-row"><button class="btn" id="loadDishesBtn">🍽️ Fetch dishes</button></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2>📂 Categories</h2>
+          <span class="endpoint">GET /api/categories/</span>
+        </div>
+        <div class="preview-box"><div id="categoriesList" class="pill-list"><span class="empty-note">Not loaded</span></div></div>
+        <div class="btn-row"><button class="btn" id="loadCategoriesBtn">🔄 Fetch categories</button></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2>🔍 Single Dish</h2>
+          <span class="endpoint">GET /api/dishes/&lt;id&gt;/</span>
+        </div>
+        <div class="preview-box" id="singleDishBox">
+          <div class="dish-message">Pick a dish ID</div>
+        </div>
+        <div class="btn-row">
+          <input id="dishIdInput" type="number" min="1" value="1" style="max-width:90px;">
+          <button class="btn btn-primary" id="loadDishBtn">Fetch</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2>➕ Add Dish</h2>
+          <span class="endpoint">POST /api/dishes/add/</span>
+        </div>
+        <div class="inline-form" style="margin-bottom:.8rem;">
+          <input class="input-field" id="dishName" placeholder="Name" value="Truffle Pasta">
+          <input class="input-field" id="dishDesc" placeholder="Description" value="Creamy truffle pasta">
+          <input class="input-field" id="dishPrice" placeholder="Price" value="18.50" style="max-width:110px;">
+          <input class="input-field" id="dishCategory" placeholder="Category ID" value="1" style="max-width:120px;">
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" id="addDishBtn">🍳 Add dish</button></div>
+        <div class="toast" id="addDishMsg"></div>
+      </div>
+    </div>
+
+    <!-- Tables -->
+    <div class="card full-width">
+      <div class="card-header">
+        <h2>🍽️ Tables</h2>
+        <span class="endpoint">GET /api/tables/</span>
+        <button class="btn btn-sm" id="loadTablesBtn" style="margin-left:auto;">Refresh</button>
+      </div>
+      <div class="preview-box">
+        <div class="pill-list" id="tablesList"><span class="empty-note">Not loaded</span></div>
+      </div>
+    </div>
+
+    <!-- Reservations -->
+    <div class="card full-width">
+      <div class="card-header">
+        <h2>📅 My Reservations</h2>
+        <span class="endpoint">GET /api/reservations/</span>
+        <button class="btn btn-sm" id="loadReservationsBtn" style="margin-left:auto;">Refresh</button>
+      </div>
+
+      <div class="reservation-form">
+        <select id="resTable"><option value="">Select table…</option></select>
+        <input type="date" id="resDate">
+        <input type="time" id="resTime" value="19:30">
+        <input type="number" id="resGuests" min="1" value="2" placeholder="guests" style="max-width:100px;">
+        <button class="btn btn-primary" id="createResBtn">➕ Create reservation</button>
+      </div>
+      <div class="toast" id="createResMsg"></div>
+
+      <div class="res-list" id="reservationsList">
+        <div class="empty-note">No reservations loaded</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ---------- CONFIG ---------- */
+    const API = "/api";                                    // your project mounts restaurant.urls under /api/
+    let accessToken  = localStorage.getItem("access")  || "";
+    let refreshToken = localStorage.getItem("refresh") || "";
+
+    /* ---------- AUTH BADGE ---------- */
+    function setBadge() {
+      const b = document.getElementById("authBadge");
+      if (accessToken) { b.className = "auth-badge ok"; b.textContent = "authenticated"; }
+      else             { b.className = "auth-badge no"; b.textContent = "not authenticated"; }
+    }
+
+    /* ---------- TOKEN REFRESH ---------- */
+    async function refreshAccess() {
+      if (!refreshToken) return false;
+      const res = await fetch(`${API}/token/refresh/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      accessToken = data.access;
+      localStorage.setItem("access", accessToken);
+      return true;
+    }
+
+    /* ---------- FETCH WRAPPER ---------- */
+    async function apiFetch(path, opts = {}, retry = true) {
+      const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+      if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+      const res = await fetch(API + path, { ...opts, headers });
+      if (res.status === 401 && retry) {
+        const ok = await refreshAccess();
+        if (ok) return apiFetch(path, opts, false);
+        logout();
+        throw new Error("Session expired — please log in again.");
+      }
+      let data = null;
+      try { data = await res.json(); } catch (_) {}
+      if (!res.ok) {
+        const msg = data ? JSON.stringify(data) : res.statusText;
+        throw new Error(`HTTP ${res.status}: ${msg}`);
+      }
+      return data;
+    }
+
+    /* ---------- LOGIN / LOGOUT / REGISTER ---------- */
+    document.getElementById("loginBtn").onclick = async () => {
+      const username = document.getElementById("loginUsername").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      try {
+        const res = await fetch(`${API}/token/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        accessToken  = data.access;
+        refreshToken = data.refresh;
+        localStorage.setItem("access",  accessToken);
+        localStorage.setItem("refresh", refreshToken);
+        setBadge();
+        alert("✅ Logged in");
+      } catch (e) { alert("❌ Login failed: " + e.message); }
+    };
+
+    function logout() {
+      accessToken = ""; refreshToken = "";
+      localStorage.removeItem("access"); localStorage.removeItem("refresh");
+      setBadge();
+    }
+    document.getElementById("logoutBtn").onclick = () => { logout(); alert("Logged out"); };
+
+    document.getElementById("registerBtn").onclick = async () => {
+      const el = document.getElementById("registerMsg");
+      const username = document.getElementById("regUsername").value.trim();
+      const password = document.getElementById("regPassword").value;
+      try {
+        await apiFetch("/register/", { method: "POST", body: JSON.stringify({ username, password }) });
+        el.textContent = `✅ "${username}" registered — now log in.`;
+        el.className = "toast show";
+      } catch (e) {
+        el.textContent = `❌ ${e.message}`;
+        el.className = "toast show err";
+      }
+      setTimeout(() => (el.className = "toast"), 4000);
+    };
+
+    /* ---------- DISHES ---------- */
+    document.getElementById("loadDishesBtn").onclick = async () => {
+      try {
+        const data = await apiFetch("/dishes/");
+        const list = document.getElementById("dishesList");
+        if (!data.dishes.length) { list.innerHTML = `<div class="empty-note">No dishes</div>`; return; }
+        list.innerHTML = data.dishes.map(d => `
+          <div class="row-item">
+            <span style="font-weight:500;">${d.name}</span>
+            <span style="color:#6a4e38;">$${d.price}</span>
+          </div>`).join("");
+      } catch (e) { document.getElementById("dishesList").innerHTML = `<div class="empty-note">❌ ${e.message}</div>`; }
+    };
+
+    document.getElementById("loadCategoriesBtn").onclick = async () => {
+      try {
+        const data = await apiFetch("/categories/");
+        const list = document.getElementById("categoriesList");
+        if (!data.categories.length) { list.innerHTML = `<span class="empty-note">No categories</span>`; return; }
+        list.innerHTML = data.categories.map(c => `<span class="pill">${c.name}</span>`).join("");
+      } catch (e) { document.getElementById("categoriesList").innerHTML = `<span class="empty-note">❌ ${e.message}</span>`; }
+    };
+
+    document.getElementById("loadDishBtn").onclick = async () => {
+      const id = document.getElementById("dishIdInput").value;
+      try {
+        const d = await apiFetch(`/dishes/${id}/`);
+        document.getElementById("singleDishBox").innerHTML = `
+          <div class="dish-message">${d.message}</div>
+          <div class="dish-data-row"><span class="dish-label">Name</span><span class="dish-value">${d.dish_name}</span></div>
+          <div class="dish-data-row"><span class="dish-label">Description</span><span class="dish-value">${d.dish_description}</span></div>
+          <div class="dish-data-row"><span class="dish-label">Price</span><span class="dish-value">$${d.dish_price}</span></div>
+          <div class="dish-data-row"><span class="dish-label">Available</span><span class="dish-value">${d.dish_available ? "✅ Yes" : "❌ No"}</span></div>`;
+      } catch (e) {
+        document.getElementById("singleDishBox").innerHTML = `<div class="dish-message">❌ ${e.message}</div>`;
+      }
+    };
+
+    document.getElementById("addDishBtn").onclick = async () => {
+      const el = document.getElementById("addDishMsg");
+      const payload = {
+        name: document.getElementById("dishName").value.trim(),
+        description: document.getElementById("dishDesc").value.trim(),
+        price: document.getElementById("dishPrice").value.trim(),
+        category: parseInt(document.getElementById("dishCategory").value, 10),
+        available: true,
+      };
+      try {
+        const dish = await apiFetch("/dishes/add/", { method: "POST", body: JSON.stringify(payload) });
+        el.textContent = `✅ Dish "${dish.name}" created (id ${dish.id})`;
+        el.className = "toast show";
+      } catch (e) {
+        el.textContent = `❌ ${e.message}`;
+        el.className = "toast show err";
+      }
+      setTimeout(() => (el.className = "toast"), 4000);
+    };
+
+    /* ---------- TABLES ---------- */
+    async function loadTables() {
+      try {
+        const tables = await apiFetch("/tables/");
+        const list  = document.getElementById("tablesList");
+        const select = document.getElementById("resTable");
+        if (!tables.length) {
+          list.innerHTML = `<span class="empty-note">No tables</span>`;
+          select.innerHTML = `<option value="">No tables</option>`;
+          return;
+        }
+        list.innerHTML = tables.map(t =>
+          `<span class="pill">${t.available ? "🟢" : "🔴"} Table ${t.number} · ${t.seats} seats</span>`
+        ).join("");
+        select.innerHTML = `<option value="">Select table…</option>` +
+          tables.filter(t => t.available).map(t =>
+            `<option value="${t.id}">Table ${t.number} (${t.seats} seats)</option>`).join("");
+      } catch (e) {
+        document.getElementById("tablesList").innerHTML = `<span class="empty-note">❌ ${e.message}</span>`;
+      }
+    }
+    document.getElementById("loadTablesBtn").onclick = loadTables;
+
+    /* ---------- RESERVATIONS ---------- */
+    const STATUSES = ["pending", "confirmed", "completed", "cancelled"];
+
+    async function loadReservations() {
+      const container = document.getElementById("reservationsList");
+      try {
+        const list = await apiFetch("/reservations/");
+        if (!list.length) { container.innerHTML = `<div class="empty-note">No reservations yet</div>`; return; }
+        container.innerHTML = list.map(r => {
+          const editable = r.status !== "cancelled" && r.status !== "completed";
+          const statusOpts = STATUSES.map(s =>
+            `<option value="${s}" ${s === r.status ? "selected" : ""}>${s}</option>`).join("");
+          return `
+            <div class="res-item">
+              <div class="res-item-top">
+                <div>
+                  <div class="res-title">📅 Table ${r.table_number} · ${r.date} at ${r.time}</div>
+                  <div class="res-meta">👥 ${r.guests} guests · 🪑 ${r.table_seats} seats · #${r.id}</div>
+                </div>
+                <span class="res-badge status-${r.status}">${r.status}</span>
+              </div>
+              <div class="res-actions">
+                <select class="res-status-select" data-id="${r.id}" ${editable ? "" : "disabled"}>${statusOpts}</select>
+                <button class="btn btn-sm" data-action="save-status" data-id="${r.id}" ${editable ? "" : "disabled"}>Save status</button>
+                <button class="btn btn-sm btn-danger" data-action="cancel" data-id="${r.id}" ${editable ? "" : "disabled"}>Cancel</button>
+                <button class="btn btn-sm" data-action="detail" data-id="${r.id}">Detail</button>
+              </div>
+            </div>`;
+        }).join("");
+
+        // wire actions
+        container.querySelectorAll("[data-action]").forEach(btn => {
+          btn.onclick = () => handleReservationAction(btn.dataset.action, btn.dataset.id);
+        });
+      } catch (e) {
+        container.innerHTML = `<div class="empty-note">❌ ${e.message}</div>`;
+      }
+    }
+
+    async function handleReservationAction(action, id) {
+      if (action === "save-status") {
+        const sel = document.querySelector(`.res-status-select[data-id="${id}"]`);
+        try {
+          await apiFetch(`/reservations/${id}/status/`, {
+            method: "PATCH",
+            body: JSON.stringify({ status: sel.value }),
+          });
+          loadReservations();
+        } catch (e) { alert("❌ " + e.message); }
+      } else if (action === "cancel") {
+        if (!confirm("Cancel this reservation?")) return;
+        try {
+          await apiFetch(`/reservations/${id}/cancel/`, { method: "POST" });
+          loadReservations();
+        } catch (e) { alert("❌ " + e.message); }
+      } else if (action === "detail") {
+        try {
+          const r = await apiFetch(`/reservations/${id}/`);
+          alert(
+            `Reservation #${r.id}\n` +
+            `User: ${r.user}\n` +
+            `Table: ${r.table_number} (${r.table_seats} seats)\n` +
+            `Date: ${r.date}\n` +
+            `Time: ${r.time}\n` +
+            `Guests: ${r.guests}\n` +
+            `Status: ${r.status}\n` +
+            `Created: ${r.created_at}`
+          );
+        } catch (e) { alert("❌ " + e.message); }
+      }
+    }
+
+    document.getElementById("loadReservationsBtn").onclick = loadReservations;
+
+    document.getElementById("createResBtn").onclick = async () => {
+      const el = document.getElementById("createResMsg");
+      const payload = {
+        table:  parseInt(document.getElementById("resTable").value, 10) || null,
+        date:   document.getElementById("resDate").value,
+        time:   document.getElementById("resTime").value,
+        guests: parseInt(document.getElementById("resGuests").value, 10) || 1,
+      };
+      if (!payload.table) { el.textContent = "❌ Select a table first"; el.className = "toast show err"; setTimeout(() => el.className = "toast", 3000); return; }
+      if (!payload.date)  { el.textContent = "❌ Choose a date"; el.className = "toast show err"; setTimeout(() => el.className = "toast", 3000); return; }
+      try {
+        const r = await apiFetch("/reservations/", { method: "POST", body: JSON.stringify(payload) });
+        el.textContent = `✅ Reservation #${r.id} created (status: ${r.status})`;
+        el.className = "toast show";
+        loadReservations();
+      } catch (e) {
+        el.textContent = `❌ ${e.message}`;
+        el.className = "toast show err";
+      }
+      setTimeout(() => (el.className = "toast"), 5000);
+    };
+
+    /* ---------- INIT ---------- */
+    setBadge();
+    if (accessToken) {
+      loadTables();
+      loadReservations();
+    }
+  </script>
+</body>
+</html>
